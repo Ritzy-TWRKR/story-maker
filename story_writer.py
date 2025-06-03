@@ -1,8 +1,9 @@
 import openai
 import logging
 import time
-from pydantic import BaseModel,field_validator
 import httpx
+
+from schemas import DevelopStoryRequest, StoryRequest, StoryResponse, ModelStatistics
 
 API_KEY = "Sjm8mDzDUj5X2qLSV2jZPDMUUpKfZxbr"
 MODEL_NAME = "meta-llama/Llama-3.2-3B-Instruct"
@@ -13,20 +14,70 @@ openai_client = openai.OpenAI(api_key=API_KEY,
                               http_client=httpx.Client(timeout=60))
 
 
-class ModelStatistics(BaseModel):
-    tokensUsedCount: int | None = None
-    timeTakenToProcessPrompt: float | None = None
-
-
-class StoryResponse(BaseModel):
-    story: str | None = None
-    storySummary: str | None = None
-    image: str | None = None
-    error: str | None = None
-    modelStatistics: ModelStatistics | None = None
-
-
 class StoryWriter:
+
+
+    @staticmethod
+
+    @staticmethod
+    def develop_story(request:DevelopStoryRequest) -> StoryResponse:
+        try:
+            start_time = time.time()
+            story, tokens_used_story = StoryWriter.develop_story_from_summary(request)
+            story_summary, tokens_used_summary = StoryWriter.generate_summary(story, request.genre, request.experimentBoundary)
+            image_url = None
+            if request.imageNeeded:
+                image_url = StoryWriter.generate_image(request.plot, request.genre)
+            time_taken = time.time() - start_time
+            total_tokens = (tokens_used_story or 0) + (tokens_used_summary or 0)
+            return StoryResponse(
+                story=story,
+                storySummary=story_summary,
+                image=image_url,
+                modelStatistics=ModelStatistics(tokensUsedCount=total_tokens, timeTakenToProcessPrompt=time_taken)
+            )
+        except Exception as e:
+            logging.exception("Error in developing a story")
+            return StoryResponse(error=str(e))
+
+
+    @staticmethod
+    def new_story(request:StoryRequest) -> StoryResponse:
+        try:
+            start_time = time.time()
+            story, tokens_used_story = StoryWriter.generate_story(request.plot, request.genre, request.experimentBoundary, request.totalStoryCharacters, request.totalParagraphs, request.totalWords)
+            story_summary, tokens_used_summary = StoryWriter.generate_summary(story, request.genre, request.experimentBoundary)
+            image_url = None
+            if request.imageNeeded:
+                image_url = StoryWriter.generate_image(request.plot, request.genre)
+            time_taken = time.time() - start_time
+            total_tokens = (tokens_used_story or 0) + (tokens_used_summary or 0)
+            return StoryResponse(
+                story=story,
+                storySummary=story_summary,
+                image=image_url,
+                modelStatistics=ModelStatistics(tokensUsedCount=total_tokens, timeTakenToProcessPrompt=time_taken)
+            )
+        except Exception as e:
+            logging.exception("Error in generrating a new story")
+            return StoryResponse(error=str(e))
+
+    def develop_story_from_summary(request:DevelopStoryRequest):
+        prompt = (
+            f"Use the following summary of the story: {request.summary} of type {request.genre} and use the {request.plot} to develop the story further. "
+            f"Include {request.totalStoryCharacters} main character(s), {request.totalParagraphs} paragraph(s), and aim for about {request.totalWords} words."
+        )
+        response = openai_client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=request.experimentBoundary
+        )
+        story = response.choices[0].message.content.strip()
+        tokens_used = None
+        if hasattr(response, 'usage') and response.usage and hasattr(response.usage, 'total_tokens'):
+            tokens_used = response.usage.total_tokens
+        return story, tokens_used
+    
 
     @staticmethod
     def generate_story(plot: str, genre: str, temperature: float = 0, totalStoryCharacters: int = 1, totalParagraphs: int = 1, totalWords: int = 100):
@@ -51,22 +102,7 @@ class StoryWriter:
         return story, tokens_used
 
 
-    @staticmethod
-    def develop_story_from_summary(summary: str, genre: str, developmentPlot: str, temperature: float = 0, totalStoryCharacters: int = 1, totalParagraphs: int = 1, totalWords: int = 100):
-        prompt = (
-            f"Use the following summary of the story: {summary} of type {genre} and use the {developmentPlot} to develop the story further. "
-            f"Include {totalStoryCharacters} main character(s), {totalParagraphs} paragraph(s), and aim for about {totalWords} words."
-        )
-        response = openai_client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=temperature,
-        )
-        story = response.choices[0].message.content.strip()
-        tokens_used = None
-        if hasattr(response, 'usage') and response.usage and hasattr(response.usage, 'total_tokens'):
-            tokens_used = response.usage.total_tokens
-        return story, tokens_used
+   
     
 
     @staticmethod
@@ -95,47 +131,3 @@ class StoryWriter:
         )
         base64Data = image_response.data[0].b64_json;
         return image_response.data[0].url if image_response.data else None
-
-
-    @staticmethod
-    def develop_story(summary: str, genre: str, image_needed: bool, developmentPlot: str, temperature: float = 0, totalStoryCharacters: int = 1, totalParagraphs: int = 1, totalWords: int = 100) -> StoryResponse:
-        try:
-            start_time = time.time()
-            story, tokens_used_story = StoryWriter.develop_story_from_summary(summary, genre, developmentPlot, temperature, totalStoryCharacters, totalParagraphs, totalWords)
-            story_summary, tokens_used_summary = StoryWriter.generate_summary(story, genre, temperature)
-            image_url = None
-            if image_needed:
-                image_url = StoryWriter.generate_image(developmentPlot, genre)
-            time_taken = time.time() - start_time
-            total_tokens = (tokens_used_story or 0) + (tokens_used_summary or 0)
-            return StoryResponse(
-                story=story,
-                storySummary=story_summary,
-                image=image_url,
-                modelStatistics=ModelStatistics(tokensUsedCount=total_tokens, timeTakenToProcessPrompt=time_taken)
-            )
-        except Exception as e:
-            logging.exception("Error in StoryWriter.develop_story")
-            return StoryResponse(error=str(e))
-
-
-    @staticmethod
-    def new_story(plot: str, image_needed: bool, genre: str, temperature: float = 0, totalStoryCharacters: int = 1, totalParagraphs: int = 1, totalWords: int = 100) -> StoryResponse:
-        try:
-            start_time = time.time()
-            story, tokens_used_story = StoryWriter.generate_story(plot, genre, temperature, totalStoryCharacters, totalParagraphs, totalWords)
-            story_summary, tokens_used_summary = StoryWriter.generate_summary(story, genre, temperature)
-            image_url = None
-            if image_needed:
-                image_url = StoryWriter.generate_image(plot, genre)
-            time_taken = time.time() - start_time
-            total_tokens = (tokens_used_story or 0) + (tokens_used_summary or 0)
-            return StoryResponse(
-                story=story,
-                storySummary=story_summary,
-                image=image_url,
-                modelStatistics=ModelStatistics(tokensUsedCount=total_tokens, timeTakenToProcessPrompt=time_taken)
-            )
-        except Exception as e:
-            logging.exception("Error in StoryWriter.new_story")
-            return StoryResponse(error=str(e))
