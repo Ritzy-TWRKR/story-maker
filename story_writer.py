@@ -42,7 +42,9 @@ class StoryWriter:
             messages=[{"role": "user", "content": prompt}],
             temperature=temperature,
         )
+    
         story = response.choices[0].message.content.strip()
+    
         tokens_used = None
         if hasattr(response, 'usage') and response.usage and hasattr(response.usage, 'total_tokens'):
             tokens_used = response.usage.total_tokens
