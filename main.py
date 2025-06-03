@@ -1,8 +1,9 @@
 from fastapi import FastAPI, Body, Query
 from pydantic import BaseModel, field_validator
 import html
-from story_writer import StoryWriter
 from fastapi.middleware.cors import CORSMiddleware
+from story_writer import StoryWriter
+from validators import sanitize_string
 
 app = FastAPI()
 
@@ -26,13 +27,7 @@ class StoryRequest(BaseModel):
     @field_validator('plot', 'genre')
     @classmethod
     def sanitize_strings(cls, v):
-        # Strip whitespace and escape HTML
-        if not isinstance(v, str):
-            raise ValueError('Must be a string')
-        sanitized = html.escape(v.strip())
-        if not sanitized:
-            raise ValueError('Field cannot be empty')
-        return sanitized
+        return sanitize_string(v)
 
     @field_validator('totalStoryCharacters')
     @classmethod

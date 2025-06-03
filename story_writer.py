@@ -1,7 +1,7 @@
 import openai
 import logging
 import time
-from pydantic import BaseModel
+from pydantic import BaseModel,field_validator
 import httpx
 
 API_KEY = "Sjm8mDzDUj5X2qLSV2jZPDMUUpKfZxbr"
