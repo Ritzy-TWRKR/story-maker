@@ -5,7 +5,7 @@ import httpx
 
 from schemas import DevelopStoryRequest, StoryRequest, StoryResponse, ModelStatistics
 
-API_KEY = "Sjm8mDzDUj5X2qLSV2jZPDMUUpKfZxbr"
+API_KEY = ""#Enter API KEy here
 MODEL_NAME = "meta-llama/Llama-3.2-3B-Instruct"
 BASE_URL = "https://api.deepinfra.com/v1/openai"
 
@@ -64,8 +64,10 @@ class StoryWriter:
 
     def develop_story_from_summary(request:DevelopStoryRequest):
         prompt = (
-            f"Use the following summary of the story: {request.summary} of type {request.genre} and use the {request.plot} to develop the story further. "
-            f"Include {request.totalStoryCharacters} main character(s), {request.totalParagraphs} paragraph(s), and aim for about {request.totalWords} words."
+            f"Use the following summary of the story: {request.summary} of type {request.genre} and"
+            f"use the {request.plot} to develop the story further. "
+            f"Include {request.totalStoryCharacters} main character(s), {request.totalParagraphs} paragraph(s),"
+             f" and aim for about {request.totalWords} words."
         )
         response = openai_client.chat.completions.create(
             model=MODEL_NAME,

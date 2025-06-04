@@ -1,6 +1,7 @@
 # Story Maker FastAPI Project
 
 This is a FastAPI project for generating and developing stories using LLMs.
+Note: Enter API_KEY in the story_maker.py 
 
 ## Getting Started
 
@@ -13,11 +14,13 @@ This is a FastAPI project for generating and developing stories using LLMs.
    ```sh
    pip install fastapi uvicorn
    ```
+
 3. **Run the FastAPI server:**
    ```sh
    uvicorn main:app --reload
    ```
 4. Open your browser and go to [http://127.0.0.1:8000](http://127.0.0.1:8000) to see the API.
+
 
 ## API Endpoints
 - `POST /story` — Receives a JSON body with:
